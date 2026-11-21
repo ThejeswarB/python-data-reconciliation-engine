@@ -10,6 +10,7 @@ A configurable Python tool for reconciling CSV and Excel datasets and producing 
 - Select worksheet names or zero-based worksheet indices for Excel inputs.
 - Classify matched, mismatched, source-only, and target-only records.
 - Detect duplicate keys instead of silently choosing one record.
+- Apply an optional absolute numeric tolerance for rounding or precision differences.
 - Produce record-level and field-level mismatch reports.
 - Export a formatted Excel workbook with eight sheets.
 - Generate CSV reports and a machine-readable JSON summary.
@@ -49,8 +50,11 @@ python -m reconciliation.cli \
   --target-sheet Transactions \
   --keys transaction_id \
   --compare amount,status \
+  --numeric-tolerance 0.01 \
   --output output
 ```
+
+`--numeric-tolerance 0.01` treats numeric values as equal when their absolute difference is at most 0.01. The default is 0, which requires exact numeric equality. The tolerance applies only when both sides of a comparison column are numeric.
 
 CSV and Excel files can also be mixed in the same run. For example, the source can be a CSV while the target is an XLSX workbook.
 
@@ -73,6 +77,7 @@ To skip Excel report generation, pass `--no-excel-report`.
 5. Keys duplicated within either input are reported separately and excluded from one-to-one classification.
 6. Empty key values are rejected by default.
 7. Paired null comparison values are treated as equal. String comparisons are case-sensitive by default.
+8. Numeric tolerance is an absolute threshold applied only to columns whose source and target values are both numeric.
 
 ## Supported formats and limitations
 
