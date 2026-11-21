@@ -74,6 +74,7 @@ def write_excel_report(
             "source_duplicate_records": "Source Duplicate Records",
             "target_duplicate_records": "Target Duplicate Records",
             "mismatch_detail_rows": "Field-level Mismatch Details",
+            "numeric_tolerance": "Numeric Tolerance (absolute)",
         }
         metric_row = 5
         for key, label in metric_labels.items():
