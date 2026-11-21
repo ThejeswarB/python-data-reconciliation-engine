@@ -225,3 +225,52 @@ def reconcile_csv(
         compare_columns,
         case_sensitive=case_sensitive,
     )
+
+
+
+def read_table(
+    path: str | Path,
+    *,
+    sheet_name: int | str = 0,
+    encoding: str = "utf-8",
+) -> pd.DataFrame:
+    """Read a CSV or Excel worksheet based on the file extension.
+
+    Excel support is limited to .xlsx and .xlsm files, which are read using
+    openpyxl. For CSV files, sheet_name is ignored.
+    """
+    file_path = Path(path)
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".csv":
+        return pd.read_csv(file_path, encoding=encoding)
+    if suffix in {".xlsx", ".xlsm"}:
+        return pd.read_excel(file_path, sheet_name=sheet_name, engine="openpyxl")
+
+    raise ValueError(
+        f"Unsupported input format '{suffix or '(no extension)'}'. "
+        "Supported formats are .csv, .xlsx, and .xlsm."
+    )
+
+
+def reconcile_files(
+    source_path: str | Path,
+    target_path: str | Path,
+    keys: Iterable[str],
+    compare_columns: Iterable[str] | None = None,
+    *,
+    source_sheet: int | str = 0,
+    target_sheet: int | str = 0,
+    case_sensitive: bool = True,
+    encoding: str = "utf-8",
+) -> ReconciliationResult:
+    """Reconcile two CSV or Excel files using the configured business keys."""
+    source = read_table(source_path, sheet_name=source_sheet, encoding=encoding)
+    target = read_table(target_path, sheet_name=target_sheet, encoding=encoding)
+    return reconcile_dataframes(
+        source,
+        target,
+        keys,
+        compare_columns,
+        case_sensitive=case_sensitive,
+    )
