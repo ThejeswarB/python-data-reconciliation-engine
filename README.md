@@ -1,20 +1,18 @@
 # Python Data Reconciliation Engine
 
-A configurable Python tool for reconciling two tabular datasets and producing clear, auditable discrepancy reports.
+A configurable Python tool for reconciling CSV and Excel datasets and producing clear, auditable discrepancy reports.
 
 > Portfolio project by Basu. This repository uses synthetic sample data and original implementation code.
 
-## Goals
+## Features
 
-- Compare source and target CSV datasets using one or more business keys.
+- Compare two CSV or Excel workbooks using one or more business keys.
+- Select worksheet names or zero-based worksheet indices for Excel inputs.
 - Classify matched, mismatched, source-only, and target-only records.
 - Detect duplicate keys instead of silently choosing one record.
-- Produce both record-level and field-level mismatch reports.
-- Generate a machine-readable reconciliation summary and detailed CSV reports.
-
-## Current implementation
-
-The first version provides a local CSV reconciliation engine built with Python, pandas, and a command-line interface. It is designed as a reliable, testable core before adding a web interface or distributed Spark processing.
+- Produce record-level and field-level mismatch reports.
+- Export a formatted Excel workbook with eight sheets.
+- Generate CSV reports and a machine-readable JSON summary.
 
 ## Quick start
 
@@ -27,26 +25,44 @@ source .venv/bin/activate
 # Windows PowerShell
 # .venv\Scripts\Activate.ps1
 
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+### Reconcile two CSV files
+
+```bash
 python -m reconciliation.cli \
   --source data/sample/source.csv \
   --target data/sample/target.csv \
+  --keys transaction_id \
+  --compare amount,status,customer \
+  --output output
+```
+
+### Reconcile Excel workbooks
+
+```bash
+python -m reconciliation.cli \
+  --source data/client_source.xlsx \
+  --target data/client_target.xlsx \
+  --source-sheet Transactions \
+  --target-sheet Transactions \
   --keys transaction_id \
   --compare amount,status \
   --output output
 ```
 
-The command writes:
-- `summary.json`
-- `matched.csv`
-- `mismatched.csv` (source and target values side by side)
-- `mismatch_details.csv` (one row per mismatched field)
-- `source_only.csv`
-- `target_only.csv`
-- `source_duplicates.csv`
-- `target_duplicates.csv`
+CSV and Excel files can also be mixed in the same run. For example, the source can be a CSV while the target is an XLSX workbook.
 
-The JSON summary includes per-column mismatch counts.
+## Generated reports
+
+The output directory contains:
+
+- `reconciliation_report.xlsx` — formatted workbook with Summary, Matched, Mismatched, Mismatch Details, Source Only, Target Only, Source Duplicates, and Target Duplicates sheets.
+- `summary.json` — machine-readable metrics and per-column mismatch counts.
+- Individual CSV files for each classification, including field-level mismatch details.
+
+To skip Excel report generation, pass `--no-excel-report`.
 
 ## Matching rules
 
@@ -54,25 +70,25 @@ The JSON summary includes per-column mismatch counts.
 2. Comparison columns are checked separately from keys.
 3. A key present once in each input is compared across the selected comparison columns.
 4. A key present in only one input is classified as source-only or target-only.
-5. Keys duplicated within either input are reported separately and excluded from one-to-one classification. This avoids ambiguous matching and inflated results.
-6. Empty key values are rejected by default because they do not reliably identify a record.
+5. Keys duplicated within either input are reported separately and excluded from one-to-one classification.
+6. Empty key values are rejected by default.
 7. Paired null comparison values are treated as equal. String comparisons are case-sensitive by default.
 
-## Development and tests
+## Supported formats and limitations
+
+- CSV: read using pandas.
+- Excel: `.xlsx` and `.xlsm`, read using openpyxl.
+- Older binary `.xls` files are not supported by this version.
+- Entire datasets are loaded into memory; this release is intended for files that fit comfortably in available memory.
+- No web UI, database persistence, or Spark backend yet.
+
+## Tests
 
 ```bash
-pip install -r requirements-dev.txt
-pytest -q
+python -m pytest -q
 ```
 
 GitHub Actions runs the test suite on Python 3.10, 3.11, and 3.12.
-
-## Current limitations
-
-- CSV inputs only.
-- Entire datasets are loaded into memory.
-- Duplicate-key records are reported, not automatically paired.
-- No web UI, database persistence, or Spark backend yet.
 
 ## Responsible use
 
