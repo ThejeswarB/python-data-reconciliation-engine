@@ -14,6 +14,10 @@ The first release is a local CSV reconciliation engine. It provides a testable p
 
 If a key is duplicated on either side, that key is considered ambiguous and excluded from all four normal classifications. This conservative behavior avoids producing misleading matches.
 
+## Mismatch reporting
+
+The record-level mismatch report keeps source and target columns side by side. The field-level mismatch report emits one row per differing comparison field, including the business key, column name, source value, and target value. The JSON summary records mismatch counts per comparison column.
+
 ## Comparison behavior
 
 - Null values compare equal to other null values.
