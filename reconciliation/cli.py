@@ -47,6 +47,7 @@ def main() -> int:
     reports = {
         "matched": result.matched,
         "mismatched": result.mismatched,
+        "mismatch_details": result.mismatch_details,
         "source_only": result.source_only,
         "target_only": result.target_only,
         "source_duplicates": result.source_duplicates,
