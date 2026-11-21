@@ -1,0 +1,6 @@
+transaction_id,amount,status,customer
+TXN001,500.00,SETTLED,Asha
+TXN002,700.00,SETTLED,Ravi
+TXN003,900.00,PENDING,Meera
+TXN004,125.50,SETTLED,Kiran
+TXN005,80.00,FAILED,Dev
