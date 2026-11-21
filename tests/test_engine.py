@@ -33,6 +33,10 @@ def test_classifies_matching_mismatched_and_missing_records():
     assert result.mismatched.iloc[0]["id"] == 102
     assert result.source_only.iloc[0]["id"] == 103
     assert result.target_only.iloc[0]["id"] == 104
+    assert result.mismatch_details.to_dict("records") == [
+        {"id": 102, "column": "amount", "source_value": 700, "target_value": 750}
+    ]
+    assert result.summary["column_mismatch_counts"] == {"name": 0, "amount": 1}
 
 
 def test_duplicate_keys_are_reported_and_excluded_from_one_to_one_matching():
@@ -54,6 +58,7 @@ def test_equal_null_comparison_values_are_treated_as_equal():
 
     assert result.summary["matched_records"] == 1
     assert result.summary["mismatched_records"] == 0
+    assert result.mismatch_details.empty
 
 
 def test_case_insensitive_string_comparison():
@@ -64,6 +69,7 @@ def test_case_insensitive_string_comparison():
     )
 
     assert result.summary["matched_records"] == 1
+    assert result.mismatch_details.empty
 
 
 def test_rejects_missing_key_values():
@@ -86,3 +92,18 @@ def test_supports_composite_keys():
     )
 
     assert result.summary["matched_records"] == 1
+
+
+def test_reports_each_mismatched_field_for_a_record():
+    source = pd.DataFrame([{"id": 1, "status": "PENDING", "amount": 100}])
+    target = pd.DataFrame([{"id": 1, "status": "PROCESSED", "amount": 120}])
+
+    result = reconcile_dataframes(
+        source, target, keys=["id"], compare_columns=["status", "amount"]
+    )
+
+    assert result.summary["mismatched_records"] == 1
+    assert result.summary["mismatch_detail_rows"] == 2
+    assert set(result.mismatch_details["column"]) == {"status", "amount"}
+    assert set(result.mismatch_details["source_value"]) == {"PENDING", 100}
+    assert set(result.mismatch_details["target_value"]) == {"PROCESSED", 120}
