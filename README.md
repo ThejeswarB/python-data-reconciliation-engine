@@ -9,12 +9,12 @@ A configurable Python tool for reconciling two tabular datasets and producing cl
 - Compare source and target CSV datasets using one or more business keys.
 - Classify matched, mismatched, source-only, and target-only records.
 - Detect duplicate keys instead of silently choosing one record.
+- Produce both record-level and field-level mismatch reports.
 - Generate a machine-readable reconciliation summary and detailed CSV reports.
-- Provide clear validation errors for missing keys, duplicate column names, and invalid input.
 
 ## Current implementation
 
-The first version provides a local CSV reconciliation engine built with Python's standard library and pandas. It is intentionally designed as a reliable, testable core before adding a web interface or distributed Spark processing.
+The first version provides a local CSV reconciliation engine built with Python, pandas, and a command-line interface. It is designed as a reliable, testable core before adding a web interface or distributed Spark processing.
 
 ## Quick start
 
@@ -36,58 +36,43 @@ python -m reconciliation.cli \
   --output output
 ```
 
-On Windows PowerShell, run the CLI command on one line or use PowerShell's backtick for line continuation.
-
 The command writes:
 - `summary.json`
 - `matched.csv`
-- `mismatched.csv`
+- `mismatched.csv` (source and target values side by side)
+- `mismatch_details.csv` (one row per mismatched field)
 - `source_only.csv`
 - `target_only.csv`
 - `source_duplicates.csv`
 - `target_duplicates.csv`
 
+The JSON summary includes per-column mismatch counts.
+
 ## Matching rules
 
 1. Key columns identify a business record. Use a composite key by passing multiple column names separated by commas.
 2. Comparison columns are checked separately from keys.
-3. A key present once in each input is matched, then compared across the selected comparison columns.
+3. A key present once in each input is compared across the selected comparison columns.
 4. A key present in only one input is classified as source-only or target-only.
 5. Keys duplicated within either input are reported separately and excluded from one-to-one classification. This avoids ambiguous matching and inflated results.
 6. Empty key values are rejected by default because they do not reliably identify a record.
-
-## Project structure
-
-```text
-reconciliation/
-  __init__.py
-  engine.py
-  cli.py
-tests/
-  test_engine.py
-data/sample/
-  source.csv
-  target.csv
-docs/
-  design.md
-output/                 # generated reports; ignored by git
-```
+7. Paired null comparison values are treated as equal. String comparisons are case-sensitive by default.
 
 ## Development and tests
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+pytest -q
 ```
 
-## Limitations in this version
+GitHub Actions runs the test suite on Python 3.10, 3.11, and 3.12.
+
+## Current limitations
 
 - CSV inputs only.
 - Entire datasets are loaded into memory.
 - Duplicate-key records are reported, not automatically paired.
 - No web UI, database persistence, or Spark backend yet.
-
-These are deliberate scope boundaries for the initial release. Planned enhancements are tracked in the project documentation.
 
 ## Responsible use
 
