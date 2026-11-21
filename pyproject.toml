@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "basu-data-reconciliation"
-version = "0.1.0"
-description = "Configurable source-to-target data reconciliation for CSV datasets."
+version = "0.2.0"
+description = "Configurable source-to-target data reconciliation for CSV and Excel datasets."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pandas>=2.2,<3.0",
+    "openpyxl>=3.1,<4.0",
 ]
 
 [project.optional-dependencies]
