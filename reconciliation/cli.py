@@ -22,6 +22,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-sheet", default=0, help="Source Excel sheet name or zero-based index.")
     parser.add_argument("--target-sheet", default=0, help="Target Excel sheet name or zero-based index.")
     parser.add_argument("--case-insensitive", action="store_true", help="Ignore case in string comparisons.")
+    parser.add_argument(
+        "--numeric-tolerance",
+        type=float,
+        default=0.0,
+        help="Allowed absolute difference for numeric comparison columns (default: 0).",
+    )
     parser.add_argument("--encoding", default="utf-8", help="CSV encoding (default: utf-8).")
     parser.add_argument(
         "--no-excel-report",
@@ -61,6 +67,7 @@ def main() -> int:
         source_sheet=_sheet_value(args.source_sheet),
         target_sheet=_sheet_value(args.target_sheet),
         case_sensitive=not args.case_insensitive,
+        numeric_tolerance=args.numeric_tolerance,
         encoding=args.encoding,
     )
 
