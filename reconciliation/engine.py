@@ -15,11 +15,12 @@ class ReconciliationResult:
 
     matched: pd.DataFrame
     mismatched: pd.DataFrame
+    mismatch_details: pd.DataFrame
     source_only: pd.DataFrame
     target_only: pd.DataFrame
     source_duplicates: pd.DataFrame
     target_duplicates: pd.DataFrame
-    summary: dict[str, int | float | list[str]]
+    summary: dict[str, object]
 
 
 def _validate_columns(
@@ -123,10 +124,12 @@ def reconcile_dataframes(
 
     source_common = source_common.set_index(keys).sort_index()
     target_common = target_common.set_index(keys).sort_index()
-    source_common = source_common.sort_index()
     target_common = target_common.reindex(source_common.index)
 
     mismatch_flags = pd.DataFrame(index=source_common.index)
+    mismatch_detail_rows: list[dict[str, object]] = []
+    column_mismatch_counts: dict[str, int] = {}
+
     for column in compare_columns:
         left = source_common[column]
         right = target_common[column]
@@ -137,9 +140,28 @@ def reconcile_dataframes(
             left_norm = left.astype("string").str.casefold()
             right_norm = right.astype("string").str.casefold()
             equal = left_norm.eq(right_norm) | (left.isna() & right.isna())
-        mismatch_flags[column] = ~equal.fillna(False)
 
-    any_mismatch = mismatch_flags.any(axis=1) if compare_columns else pd.Series(False, index=source_common.index)
+        unequal = ~equal.fillna(False)
+        mismatch_flags[column] = unequal
+        column_mismatch_counts[column] = int(unequal.sum())
+
+        for record_index in source_common.index[unequal]:
+            key_values = (record_index,) if len(keys) == 1 else tuple(record_index)
+            detail = dict(zip(keys, key_values))
+            detail.update(
+                {
+                    "column": column,
+                    "source_value": source_common.at[record_index, column],
+                    "target_value": target_common.at[record_index, column],
+                }
+            )
+            mismatch_detail_rows.append(detail)
+
+    any_mismatch = (
+        mismatch_flags.any(axis=1)
+        if compare_columns
+        else pd.Series(False, index=source_common.index)
+    )
     matched_index = source_common.index[~any_mismatch]
     mismatched_index = source_common.index[any_mismatch]
 
@@ -153,12 +175,14 @@ def reconcile_dataframes(
         suffixes=("_source", "_target"),
         validate="one_to_one",
     )
+    mismatch_details = pd.DataFrame(
+        mismatch_detail_rows,
+        columns=keys + ["column", "source_value", "target_value"],
+    )
 
-    total_source = len(source)
-    total_target = len(target)
-    summary: dict[str, int | float | list[str]] = {
-        "source_records": total_source,
-        "target_records": total_target,
+    summary: dict[str, object] = {
+        "source_records": len(source),
+        "target_records": len(target),
         "matched_records": len(matched),
         "mismatched_records": len(mismatched),
         "source_only_records": len(source_only),
@@ -166,11 +190,14 @@ def reconcile_dataframes(
         "source_duplicate_records": len(source_duplicates),
         "target_duplicate_records": len(target_duplicates),
         "comparison_columns": compare_columns,
+        "column_mismatch_counts": column_mismatch_counts,
+        "mismatch_detail_rows": len(mismatch_details),
     }
 
     return ReconciliationResult(
         matched=matched,
         mismatched=mismatched,
+        mismatch_details=mismatch_details,
         source_only=source_only,
         target_only=target_only,
         source_duplicates=source_duplicates,
