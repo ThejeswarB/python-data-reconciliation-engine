@@ -107,3 +107,68 @@ def test_reports_each_mismatched_field_for_a_record():
     assert set(result.mismatch_details["column"]) == {"status", "amount"}
     assert set(result.mismatch_details["source_value"]) == {"PENDING", 100}
     assert set(result.mismatch_details["target_value"]) == {"PROCESSED", 120}
+
+
+
+def test_reconcile_files_reads_excel_workbooks(tmp_path):
+    from reconciliation.engine import reconcile_files
+
+    source = pd.DataFrame(
+        [{"id": 1, "amount": 100}, {"id": 2, "amount": 200}]
+    )
+    target = pd.DataFrame(
+        [{"id": 1, "amount": 100}, {"id": 2, "amount": 250}]
+    )
+    source_path = tmp_path / "source.xlsx"
+    target_path = tmp_path / "target.xlsx"
+    source.to_excel(source_path, sheet_name="Transactions", index=False)
+    target.to_excel(target_path, sheet_name="Transactions", index=False)
+
+    result = reconcile_files(
+        source_path,
+        target_path,
+        keys=["id"],
+        compare_columns=["amount"],
+        source_sheet="Transactions",
+        target_sheet="Transactions",
+    )
+
+    assert result.summary["matched_records"] == 1
+    assert result.summary["mismatched_records"] == 1
+    assert result.mismatch_details.iloc[0]["column"] == "amount"
+
+
+def test_excel_report_contains_formatted_sheets(tmp_path):
+    from openpyxl import load_workbook
+    from reconciliation.engine import reconcile_dataframes
+    from reconciliation.reports import write_excel_report
+
+    source = pd.DataFrame([{"id": 1, "status": "PENDING", "amount": 100}])
+    target = pd.DataFrame([{"id": 1, "status": "PROCESSED", "amount": 120}])
+    result = reconcile_dataframes(
+        source, target, keys=["id"], compare_columns=["status", "amount"]
+    )
+
+    output_path = tmp_path / "reports" / "reconciliation_report.xlsx"
+    write_excel_report(result, output_path)
+
+    workbook = load_workbook(output_path, data_only=True)
+    assert workbook.sheetnames == [
+        "Summary", "Matched", "Mismatched", "Mismatch Details",
+        "Source Only", "Target Only", "Source Duplicates", "Target Duplicates"
+    ]
+    assert workbook["Summary"]["A1"].value == "Metric"
+    assert workbook["Mismatch Details"].max_row == 3
+    assert workbook["Mismatch Details"].freeze_panes == "A2"
+    assert workbook["Mismatch Details"].auto_filter.ref is not None
+    workbook.close()
+
+
+def test_read_table_rejects_unsupported_extensions(tmp_path):
+    from reconciliation.engine import read_table
+
+    unsupported = tmp_path / "data.txt"
+    unsupported.write_text("id,value\\n1,a\\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Supported formats"):
+        read_table(unsupported)
