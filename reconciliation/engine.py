@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 from typing import Iterable
 
@@ -73,14 +74,16 @@ def reconcile_dataframes(
     compare_columns: Iterable[str] | None = None,
     *,
     case_sensitive: bool = True,
+    numeric_tolerance: float = 0.0,
 ) -> ReconciliationResult:
-    """Reconcile two DataFrames using unique business keys.
+    """Reconcile DataFrames using unique business keys.
 
-    Rows with null/blank keys are rejected. Duplicate-key rows are emitted to
-    duplicate reports and excluded from normal classification. Comparison
-    treats paired nulls as equal. Values are compared without coercing source
-    and target columns into a shared dtype.
+    Numeric tolerance is an optional absolute difference allowed for numeric
+    comparison columns. The default of zero requires exact equality.
     """
+    if not math.isfinite(numeric_tolerance) or numeric_tolerance < 0:
+        raise ValueError("numeric_tolerance must be a finite, non-negative number.")
+
     keys = list(keys)
     compare_columns = list(compare_columns) if compare_columns is not None else [
         column for column in source.columns if column not in keys and column in target.columns
@@ -133,7 +136,17 @@ def reconcile_dataframes(
     for column in compare_columns:
         left = source_common[column]
         right = target_common[column]
-        equal = left.eq(right) | (left.isna() & right.isna())
+        both_null = left.isna() & right.isna()
+        if (
+            numeric_tolerance > 0
+            and pd.api.types.is_numeric_dtype(left)
+            and pd.api.types.is_numeric_dtype(right)
+        ):
+            difference = (pd.to_numeric(left) - pd.to_numeric(right)).abs()
+            equal = difference.le(numeric_tolerance).fillna(False) | both_null
+        else:
+            equal = left.eq(right) | both_null
+
         if not case_sensitive and (
             pd.api.types.is_string_dtype(left) or left.dtype == object
         ) and (pd.api.types.is_string_dtype(right) or right.dtype == object):
@@ -190,6 +203,7 @@ def reconcile_dataframes(
         "source_duplicate_records": len(source_duplicates),
         "target_duplicate_records": len(target_duplicates),
         "comparison_columns": compare_columns,
+        "numeric_tolerance": numeric_tolerance,
         "column_mismatch_counts": column_mismatch_counts,
         "mismatch_detail_rows": len(mismatch_details),
     }
@@ -213,6 +227,7 @@ def reconcile_csv(
     compare_columns: Iterable[str] | None = None,
     *,
     case_sensitive: bool = True,
+    numeric_tolerance: float = 0.0,
     encoding: str = "utf-8",
 ) -> ReconciliationResult:
     """Load two CSV files and reconcile them."""
@@ -224,6 +239,7 @@ def reconcile_csv(
         keys,
         compare_columns,
         case_sensitive=case_sensitive,
+        numeric_tolerance=numeric_tolerance,
     )
 
 
@@ -262,6 +278,7 @@ def reconcile_files(
     source_sheet: int | str = 0,
     target_sheet: int | str = 0,
     case_sensitive: bool = True,
+    numeric_tolerance: float = 0.0,
     encoding: str = "utf-8",
 ) -> ReconciliationResult:
     """Reconcile two CSV or Excel files using the configured business keys."""
@@ -273,4 +290,5 @@ def reconcile_files(
         keys,
         compare_columns,
         case_sensitive=case_sensitive,
+        numeric_tolerance=numeric_tolerance,
     )
