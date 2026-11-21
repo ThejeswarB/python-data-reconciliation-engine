@@ -157,7 +157,16 @@ def test_excel_report_contains_formatted_sheets(tmp_path):
         "Summary", "Matched", "Mismatched", "Mismatch Details",
         "Source Only", "Target Only", "Source Duplicates", "Target Duplicates"
     ]
-    assert workbook["Summary"]["A1"].value == "Metric"
+    assert workbook["Summary"]["A1"].value == "Reconciliation Report"
+    assert workbook["Summary"]["A4"].value == "Metric"
+    assert workbook["Summary"]["B4"].value == "Value"
+    assert workbook["Summary"]["A16"].value == "Column-level Mismatch Counts"
+    assert workbook["Summary"]["A17"].value == "Comparison Column"
+    assert workbook["Summary"]["B17"].value == "Mismatched Records"
+    assert workbook["Summary"]["A18"].value == "status"
+    assert workbook["Summary"]["B18"].value == 1
+    assert workbook["Summary"]["A19"].value == "amount"
+    assert workbook["Summary"]["B19"].value == 1
     assert workbook["Mismatch Details"].max_row == 3
     assert workbook["Mismatch Details"].freeze_panes == "A2"
     assert workbook["Mismatch Details"].auto_filter.ref is not None
