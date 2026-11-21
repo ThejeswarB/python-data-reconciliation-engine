@@ -160,13 +160,13 @@ def test_excel_report_contains_formatted_sheets(tmp_path):
     assert workbook["Summary"]["A1"].value == "Reconciliation Report"
     assert workbook["Summary"]["A4"].value == "Metric"
     assert workbook["Summary"]["B4"].value == "Value"
-    assert workbook["Summary"]["A16"].value == "Column-level Mismatch Counts"
-    assert workbook["Summary"]["A17"].value == "Comparison Column"
-    assert workbook["Summary"]["B17"].value == "Mismatched Records"
-    assert workbook["Summary"]["A18"].value == "status"
-    assert workbook["Summary"]["B18"].value == 1
-    assert workbook["Summary"]["A19"].value == "amount"
+    assert workbook["Summary"]["A17"].value == "Column-level Mismatch Counts"
+    assert workbook["Summary"]["A18"].value == "Comparison Column"
+    assert workbook["Summary"]["B18"].value == "Mismatched Records"
+    assert workbook["Summary"]["A19"].value == "status"
     assert workbook["Summary"]["B19"].value == 1
+    assert workbook["Summary"]["A20"].value == "amount"
+    assert workbook["Summary"]["B20"].value == 1
     assert workbook["Mismatch Details"].max_row == 3
     assert workbook["Mismatch Details"].freeze_panes == "A2"
     assert workbook["Mismatch Details"].auto_filter.ref is not None
@@ -181,3 +181,39 @@ def test_read_table_rejects_unsupported_extensions(tmp_path):
 
     with pytest.raises(ValueError, match="Supported formats"):
         read_table(unsupported)
+
+
+
+def test_numeric_tolerance_allows_small_variance_and_flags_larger_variance():
+    source = pd.DataFrame(
+        [{"id": 1, "amount": 100.00}, {"id": 2, "amount": 200.00}]
+    )
+    target = pd.DataFrame(
+        [{"id": 1, "amount": 100.005}, {"id": 2, "amount": 200.02}]
+    )
+
+    result = reconcile_dataframes(
+        source,
+        target,
+        keys=["id"],
+        compare_columns=["amount"],
+        numeric_tolerance=0.01,
+    )
+
+    assert result.summary["matched_records"] == 1
+    assert result.summary["mismatched_records"] == 1
+    assert result.mismatch_details.iloc[0]["id"] == 2
+    assert result.summary["numeric_tolerance"] == 0.01
+
+
+def test_numeric_tolerance_rejects_negative_values():
+    source, target = sample_frames()
+
+    with pytest.raises(ValueError, match="finite, non-negative"):
+        reconcile_dataframes(
+            source,
+            target,
+            keys=["id"],
+            compare_columns=["amount"],
+            numeric_tolerance=-0.01,
+        )
